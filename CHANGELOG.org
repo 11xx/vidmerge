@@ -8,4 +8,7 @@
 - Added =optparse-applicative= to executable stanza in =.cabal= file.
 - Minimal test functionality with =file.mp4= and =output.txt= input and
   output files.
+- Added =knob= to library stanza in =.cabal= file.
+  + Create virtual files to serve as RAM-based Handle to buffer the
+    output of the shell command. See [[https://hackage.haskell.org/package/knob-0.2.2/docs/Data-Knob.html][Data.Knob]].
 

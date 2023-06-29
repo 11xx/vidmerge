@@ -1,18 +1,23 @@
 module VidMerge.FrameMd5 ( writeToFile ) where
 
 import System.Process
-    ( proc,
-      createProcess,
-      StdStream(CreatePipe),
-      CreateProcess(std_out) )
-import Data.ByteString.Lazy ( ByteString )
-import qualified Data.ByteString.Lazy as BS
-import System.IO ( withFile, IOMode(WriteMode) )
+    ( createProcess,
+      proc,
+      CreateProcess(std_out),
+      StdStream(CreatePipe) )
+import Data.ByteString ( ByteString )
+import qualified Data.ByteString as BS
+import System.IO ( hClose, IOMode(WriteMode) )
+import Data.Knob ( getContents, newFileHandle, newKnob )
 
 writeToFile :: [Char] -> FilePath -> IO ()
 writeToFile f o = do
   output <- readProcessOutput $ extractFrameMd5 f
-  withFile o WriteMode (`BS.hPutStr` output)
+  knob <- newKnob output
+  h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
+  cont <- Data.Knob.getContents knob
+  BS.writeFile o cont
+  hClose h
   putStrLn $ "Output has been written to " ++ o
 
 
@@ -38,4 +43,3 @@ extractFrameMd5 f =
        , "copy"
        , "-"
        ]
-
