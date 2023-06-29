@@ -1,0 +1,11 @@
+* Revision history for vidmerge
+
+** 0.0.0.0 -- 2023-06-29
+
+- First version. Released on an unsuspecting world.
+- Added =bytestring= to library stanza in =.cabal= file.
+- Added =process= to library stanza in =.cabal= file.
+- Added =optparse-applicative= to executable stanza in =.cabal= file.
+- Minimal test functionality with =file.mp4= and =output.txt= input and
+  output files.
+
