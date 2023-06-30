@@ -10,14 +10,14 @@ import qualified Data.ByteString as BS
 import System.IO ( hClose, IOMode(WriteMode) )
 import Data.Knob ( getContents, newFileHandle, newKnob )
 
-writeToFile :: [Char] -> FilePath -> IO ()
+writeToFile :: FilePath -> FilePath -> IO ()
 writeToFile f o = do
   output <- readProcessOutput $ extractFrameMd5 f
   knob <- newKnob output
-  h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
+  -- h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
   cont <- Data.Knob.getContents knob
   BS.writeFile o cont
-  hClose h
+  -- hClose h
   putStrLn $ "Output has been written to " ++ o
 
 
@@ -30,16 +30,12 @@ extractFrameMd5 :: String -> CreateProcess
 extractFrameMd5 f =
   proc "ffmpeg"
        [ "-y"
-       , "-loglevel"
-       , "fatal"
+       , "-loglevel", "fatal"
        , "-nostats"
        , "-hide_banner"
-       , "-i"
-       , f
+       , "-i", f
        , "-an"
-       , "-f"
-       , "framemd5"
-       , "-c"
-       , "copy"
+       , "-f", "framemd5"
+       , "-c", "copy"
        , "-"
        ]
