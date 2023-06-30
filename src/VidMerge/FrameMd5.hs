@@ -1,4 +1,4 @@
-module VidMerge.FrameMd5 ( writeToFile ) where
+module VidMerge.FrameMd5 ( writeFrameIndexToFile ) where
 
 import System.Process
     ( createProcess,
@@ -10,8 +10,11 @@ import qualified Data.ByteString as BS
 import System.IO ( hClose, IOMode(WriteMode) )
 import Data.Knob ( getContents, newFileHandle, newKnob )
 
-writeToFile :: FilePath -> FilePath -> IO ()
-writeToFile f o = do
+import System.FilePath ( (<.>), dropExtensions )
+
+writeFrameIndexToFile :: FilePath -> IO ()
+writeFrameIndexToFile f = do
+  let o = makeFrameIndexExtension f
   output <- readProcessOutput $ extractFrameMd5 f
   knob <- newKnob output
   -- h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
@@ -20,6 +23,8 @@ writeToFile f o = do
   -- hClose h
   putStrLn $ "Output has been written to " ++ o
 
+makeFrameIndexExtension :: FilePath -> FilePath
+makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
 
 readProcessOutput :: CreateProcess -> IO ByteString
 readProcessOutput pc = do

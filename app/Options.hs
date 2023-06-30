@@ -31,45 +31,44 @@ import Options.Applicative
 import Options.Applicative.Extra ( helperWith )
 
 import Version ( versionStr, progName )
-import Data.Kind (Type)
 
 data Opts = Opts
-  { optInputFile  :: FilePath
-  , optOutputFile :: FilePath
-  , optVersion    :: Type -> Type
+  { optInputFile1  :: FilePath
+  , optInputFile2  :: FilePath
+  , optVersion     :: String -> String
   }
 
 optsParser :: Parser Opts
 optsParser
   = Opts
-  <$> (inputFileOptParser <|> fileOptParser)
-  <*> (outputFileOptParser <|> fileOptParser)
+  <$> (inputFile1OptParser <|> fileOptParser)
+  <*> (inputFile2OptParser <|> fileOptParser)
   <*> versionOptParse
 
 fileOptParser :: Parser FilePath
 fileOptParser
   = strArgument
   $ metavar "FILE"
-  <> help "Input/output file"
+  <> help "Input video part, in order"
   <> action "file"
 
-inputFileOptParser :: Parser FilePath
-inputFileOptParser
+inputFile1OptParser :: Parser FilePath
+inputFile1OptParser
   = strOption
-  $ long "file"
-  <> short 'f'
+  $ long "file1"
+  <> short '1'
   <> metavar "FILE"
   -- <> value ""
-  <> help "Input video file"
+  <> help "Input video file first part"
 
-outputFileOptParser :: Parser FilePath
-outputFileOptParser
+inputFile2OptParser :: Parser FilePath
+inputFile2OptParser
   = strOption
-  $ long "output"
-  <> short 'o'
-  <> metavar "OUTPUTFILE"
+  $ long "file2"
+  <> short '2'
+  <> metavar "FILE"
   -- <> value ""
-  <> help "Output file to write the framemd5 information."
+  <> help "Input video file second part"
 
 versionOptParse :: Parser (a -> a)
 versionOptParse =
