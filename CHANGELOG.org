@@ -4,7 +4,8 @@
 # [2023-06-30 Fri 20:31:15 -03]
 - Added =filepath= dependency.
 - Changed binary to generate two frameindex frames from two input
-  video files.
+  video files, the output filenames of the frameindex.txt files are
+  made by replacing the input file name's extension.
 
 ** 0.1.0.0
 # [2023-06-29]
