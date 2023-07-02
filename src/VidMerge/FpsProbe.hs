@@ -1,12 +1,10 @@
-module VidMerge.FpsProbe where
+module VidMerge.FpsProbe (fpsProbe) where
 
 import System.Process
     ( createProcess,
       proc,
       CreateProcess(std_out),
       StdStream(CreatePipe) )
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as C
 import System.IO ( hGetContents )
 import Data.Char (isSpace)
 

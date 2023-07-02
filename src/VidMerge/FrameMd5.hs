@@ -1,4 +1,4 @@
-module VidMerge.FrameMd5 ( writeFrameIndexToFile ) where
+module VidMerge.FrameMd5 ( frameIndexFromFile ) where
 
 import System.Process
     ( createProcess,
@@ -7,24 +7,20 @@ import System.Process
       StdStream(CreatePipe) )
 import Data.ByteString ( ByteString )
 import qualified Data.ByteString as BS
-import System.IO ( hClose, IOMode(WriteMode) )
-import Data.Knob ( getContents, newFileHandle, newKnob )
+-- import System.IO
+import Data.Knob
 
-import System.FilePath ( (<.>), dropExtensions )
-
-writeFrameIndexToFile :: FilePath -> IO ()
-writeFrameIndexToFile f = do
-  let o = makeFrameIndexExtension f
+frameIndexFromFile :: String -> IO Knob
+frameIndexFromFile f = do
   output <- readProcessOutput $ extractFrameMd5 f
-  knob <- newKnob output
-  -- h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
-  cont <- Data.Knob.getContents knob
-  BS.writeFile o cont
-  -- hClose h
-  putStrLn $ "Output has been written to " ++ o
+  newKnob output
 
-makeFrameIndexExtension :: FilePath -> FilePath
-makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
+  -- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
+
+  -- cont <- Data.Knob.getContents knob
+  -- BS.writeFile o cont
+  -- hClose h
+  -- putStrLn $ "Output has been written to " ++ o
 
 readProcessOutput :: CreateProcess -> IO ByteString
 readProcessOutput pc = do

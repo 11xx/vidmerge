@@ -1,4 +1,10 @@
 * Revision history for vidmerge
+** 0.3.0.0
+# [2023-07-02 Sun 15:14:56 -03]
+- Moved and renamed functions and some logic from library to binary to
+  focus on IO purity and side-effects.
+- Added cabal ghc option compila flags for more strict warnings
+- Addressed compile warnings
 
 ** 0.2.1.0
 # [2023-07-02 Sun 00:00:59 -03]
