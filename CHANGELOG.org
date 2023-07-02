@@ -1,5 +1,9 @@
 * Revision history for vidmerge
 
+** 0.2.1.0
+# [2023-07-02 Sun 00:00:59 -03]
+- Added fps probe and print to the screen
+
 ** 0.2.0.0
 # [2023-06-30 Fri 20:31:15 -03]
 - Added =filepath= dependency.
