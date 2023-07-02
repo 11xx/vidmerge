@@ -51,6 +51,7 @@ library
     -- Modules exported by the library.
     exposed-modules:  VidMerge.FrameMd5
                       VidMerge.FpsProbe
+                      VidMerge.ParseMd5
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -94,6 +95,20 @@ executable vidmerge
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+    ghc-options:      -Wall
+                      -Wcompat
+                      -Widentities
+                      -Wincomplete-uni-patterns
+                      -Wincomplete-record-updates
+                      -Wredundant-constraints
+                      -Wmissing-export-lists
+                      -Wpartial-fields
+                      -Wmissing-deriving-strategies
+                      -Wunused-packages
+                      -fwrite-ide-info
+                      -hiedir=.hie
+
 
 -- test-suite vidmerge-test
 --     -- Base language which the package is written in.
