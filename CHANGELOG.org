@@ -1,5 +1,12 @@
 * Revision history for vidmerge
 
+** 0.4.1.0
+# [2023-07-03 Mon 14:19:10 -03]
+- Add =#tb= timebase "line finding"
+- Create =Parse.ByteString.List= library module for some bytestring
+  alternatives of =Parse.List=.
+- Move stderr error messages to helper function
+
 ** 0.4.0.0
 # [2023-07-03 Mon 02:00:15 -03]
 

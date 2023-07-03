@@ -14,6 +14,7 @@ import qualified Data.ByteString.Char8 as C
 import System.IO ( hPutStr, hPutStrLn, stderr )
 
 import Parse.List (childList)
+import qualified Parse.ByteString.List as PBSL
 
 import System.Exit ( exitFailure )
 
@@ -40,8 +41,9 @@ frameIndexFromArgs (Opts f1 f2 _) = do
   putStrLn $ oMsg o1
 
   let linesListAll = C.lines cf1
+      tbIndex = PBSL.findIndexStartWith (C.pack "#tb") linesListAll
       headerIndex = findHeaderIndex linesListAll
-      -- headerLine = linesListAll !! headerIndex
+      headerLine = linesListAll !! headerIndex
       linesList = drop (headerIndex + 1) linesListAll
 
   let csvLines = map (map C.strip . C.split ',') linesList
@@ -56,8 +58,9 @@ frameIndexFromArgs (Opts f1 f2 _) = do
   putStrLn $ oMsg o2
 
   let linesListAll2 = C.lines cf2
+      tbIndex2 = PBSL.findIndexStartWith (C.pack "#tb") linesListAll2
       headerIndex2 = findHeaderIndex linesListAll2
-      -- headerLine2 = linesListAll2 !! headerIndex2
+      headerLine2 = linesListAll2 !! headerIndex2
       linesList2 = drop (headerIndex2 + 1) linesListAll2
 
   let csvLines2 = map (map C.strip . C.split ',') linesList2
@@ -66,23 +69,57 @@ frameIndexFromArgs (Opts f1 f2 _) = do
   case getChildList of
     Just cl -> print cl
     Nothing -> do
-      red
-      hPutStr stderr "ERROR: "
-      reset
-      hPutStrLn stderr msg
-      exitFailure
-        where
-          msg = unwords [ "No matching list containing hash."
-                        , "Second video may need fixup or"
-                        , "is not the continuation of the first."
-                        ]
-          red = hSetSGR stderr [SetColor Foreground Vivid Red]
-          reset = hSetSGR stderr [Reset]
+      exitWithErrorMsg $ unwords
+        [ "No matching list containing hash."
+        , "The second video may need fixup, is encoded differently or"
+        , "is not the continuation of the first."
+        ]
+
+  putStrLn $ replicate 40 '-'
+  putStrLn "Header1"
+  print headerLine
+
+  putStrLn $ replicate 40 '-'
+  putStrLn "Header2"
+  print headerLine2
+
+
+  putStrLn $ replicate 40 '='
+  putStrLn "tb index1"
+  case tbIndex of
+    Just i -> C.putStrLn $ linesListAll !! i
+    Nothing -> do
+      exitWithErrorMsg $ unwords
+        [ "No #tb (timebase) found in the header of frameindex, probably"
+        , "the frameindex wasn't generated properly."
+        ]
+
+  putStrLn $ replicate 40 '='
+  putStrLn "tb index2"
+  case tbIndex2 of
+    Just i -> C.putStrLn $ linesListAll !! i
+    Nothing -> do
+      exitWithErrorMsg $ unwords
+        [ "No #tb (timebase) found in the header of frameindex, probably"
+        , "the frameindex wasn't generated properly."
+        ]
 
   where
     o1 = makeFrameIndexExtension f1
     o2 = makeFrameIndexExtension f2
     oMsg f = unwords ["Output has been", "written", "to", f]  -- testing unwords
+
+exitWithErrorMsg :: String -> IO b
+exitWithErrorMsg msg = do
+  red
+  hPutStr stderr "ERROR: "
+  reset
+  hPutStrLn stderr msg
+  exitFailure
+    where
+      -- msg' = unwords msg
+      red = hSetSGR stderr [SetColor Foreground Vivid Red]
+      reset = hSetSGR stderr [Reset]
 
 findHeaderIndex :: [C.ByteString] -> Int
 findHeaderIndex = go 0
@@ -102,3 +139,4 @@ fpsProbePrint (Opts f1 f2 _) = do
 
 makeFrameIndexExtension :: FilePath -> FilePath
 makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
+
