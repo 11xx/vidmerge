@@ -7,20 +7,12 @@ import System.Process
       StdStream(CreatePipe) )
 import Data.ByteString ( ByteString )
 import qualified Data.ByteString as BS
--- import System.IO
 import Data.Knob
 
 frameIndexFromFile :: String -> IO Knob
 frameIndexFromFile f = do
   output <- readProcessOutput $ extractFrameMd5 f
   newKnob output
-
-  -- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
-
-  -- cont <- Data.Knob.getContents knob
-  -- BS.writeFile o cont
-  -- hClose h
-  -- putStrLn $ "Output has been written to " ++ o
 
 readProcessOutput :: CreateProcess -> IO ByteString
 readProcessOutput pc = do

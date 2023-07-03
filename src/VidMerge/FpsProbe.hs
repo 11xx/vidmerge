@@ -8,7 +8,7 @@ import System.Process
 import System.IO ( hGetContents )
 import Data.Char (isSpace)
 
-fpsProbe :: String -> IO [Char]
+fpsProbe :: String -> IO String
 fpsProbe f = do
   (_, Just out, _, _) <- createProcess $ (fpsProbeCmd f) { std_out = CreatePipe }
   hout <- hGetContents out

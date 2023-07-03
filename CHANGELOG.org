@@ -1,4 +1,20 @@
 * Revision history for vidmerge
+
+** 0.4.0.0
+# [2023-07-03 Mon 02:00:15 -03]
+
+- Add exectable dependencies =split=, =containers= and =ansi-terminal=.
+- Changed main binary to, after writing frameindex, parse it's comma
+  separated values into a list of lists for each file and;
+- Compare the last hash item from the last list of lists and find a
+  list with a matching hash on the second list of lists and print that
+  list.
+  Experimental state.
+- Add exit code and colored stderr text.
+- Create =Parse.List= module file in library
+- Remove comments from FrameMd5.hs
+- Added type definitions
+
 ** 0.3.0.0
 # [2023-07-02 Sun 15:14:56 -03]
 - Moved and renamed functions and some logic from library to binary to
