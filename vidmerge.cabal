@@ -14,7 +14,7 @@ name:               vidmerge
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.4.1.0
+version:             0.5.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           Merge video pieces based on matching frame MD5 checksums
@@ -110,6 +110,7 @@ executable vidmerge
       , split == 0.2.*
       , containers == 0.6.*
       , ansi-terminal == 1.0
+      , directory == 1.3.*
 
     -- Directories containing source files.
     hs-source-dirs:   app

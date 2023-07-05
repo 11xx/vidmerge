@@ -1,20 +1,21 @@
-module Main where
+module Main (main) where
 
 import VidMerge.FrameMd5 ( frameIndexFromFile )
 import VidMerge.FpsProbe ( fpsProbe )
 
 import Options ( optsParserInfo, execParser, Opts(Opts) )
 
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import System.FilePath ( (<.>), dropExtensions )
--- import Data.Knob ( newFileHandle )
-import qualified Data.Knob as K
+import Data.Knob (Knob)
+import qualified Data.Knob as Knob
 
 import qualified Data.ByteString.Char8 as C
 import System.IO ( hPutStr, hPutStrLn, stderr )
 
 import Parse.List (childList)
-import qualified Parse.ByteString.List as PBSL
+import qualified Parse.ByteString.List as PL
 
 import System.Exit ( exitFailure )
 
@@ -25,89 +26,139 @@ import System.Console.ANSI
       ConsoleLayer(Foreground),
       SGR(Reset, SetColor) )
 
+import System.Directory ( doesFileExist, makeAbsolute )
+
+import Control.Monad.IO.Class ( MonadIO )
+import Text.Printf ( printf )
+-- import Numeric ( showFFloat )
+
+import Control.Monad ( when )
+import qualified Data.List as L
+
 main :: IO ()
 main = do
   opts <- execParser optsParserInfo
   frameIndexFromArgs opts
-  fpsProbePrint opts
+  -- fpsProbePrint opts
 
 frameIndexFromArgs :: Opts -> IO ()
 frameIndexFromArgs (Opts f1 f2 _) = do
+  let o1 = makeFrameIndexExtension f1
+      o2 = makeFrameIndexExtension f2
+
   -- file1
-  kf1 <- frameIndexFromFile f1
-  -- fhf1 <- newFileHandle kf1 (o1 <.> "tmp") WriteMode
-  cf1 <- K.getContents kf1  -- to write to file
-  BS.writeFile o1 cf1
-  putStrLn $ oMsg o1
-
-  let linesListAll = C.lines cf1
-      tbIndex = PBSL.findIndexStartWith (C.pack "#tb") linesListAll
-      headerIndex = findHeaderIndex linesListAll
-      headerLine = linesListAll !! headerIndex
-      linesList = drop (headerIndex + 1) linesListAll
-
-  let csvLines = map (map C.strip . C.split ',') linesList
-
-  print $ last csvLines
+  oExist <- doesFileExist o1
+  kf <- newKnobFileOrOutput oExist o1 (Just $ frameIndexFromFile f1)
+  writeKnobToFile oExist o1 kf
+  (llall, tbi, ll) <- parseFrameIndexKnob kf
 
   -- file2
-  kf2 <- frameIndexFromFile f2
-  -- fhf2 <- newFileHandle kf2 (o2 <.> "tmp") WriteMode
-  cf2 <- K.getContents kf2
-  BS.writeFile o2 cf2
-  putStrLn $ oMsg o2
+  oExist2 <- doesFileExist o2
+  kf2 <- newKnobFileOrOutput oExist2 o2 (Just $ frameIndexFromFile f2)
+  writeKnobToFile oExist2 o2 kf2
+  (llall', tbi', ll') <- parseFrameIndexKnob kf2
 
-  let linesListAll2 = C.lines cf2
-      tbIndex2 = PBSL.findIndexStartWith (C.pack "#tb") linesListAll2
-      headerIndex2 = findHeaderIndex linesListAll2
-      headerLine2 = linesListAll2 !! headerIndex2
-      linesList2 = drop (headerIndex2 + 1) linesListAll2
+  let csv1 = csvLines ll
+      lastFrameFile1
+        | not $ null l = Just l
+        | otherwise = Nothing
+        where
+          l = last csv1
 
-  let csvLines2 = map (map C.strip . C.split ',') linesList2
-      getChildList = childList (last csvLines !! 5) csvLines2  -- 6th item
+  let csv2 = csvLines ll'
+      lastMatchFile2 = childList (last csv1 !! 5) csv2  -- 6th item
 
-  case getChildList of
-    Just cl -> print cl
-    Nothing -> do
-      exitWithErrorMsg $ unwords
+  tb <- case tbi of
+          Just i -> pure $ llall !! i
+          Nothing -> do noTbError
+
+  tbLine <- case tbi' of
+           Just i -> pure $ llall' !! i
+           Nothing -> do noTbError
+
+  let tb1 = PL.lastTwoSplit '/' tb
+  let tb2 = PL.lastTwoSplit '/' tbLine
+
+  f1a <- makeAbsolute f1
+  f2a <- makeAbsolute f2
+  let secOutF1 = ptsToSec lastFrameFile1 tb1
+      secInF2 = ptsToSec lastMatchFile2 tb2
+
+  when (secOutF1 == 0.0 || secInF2 == 0.0) noHashMatchErr
+
+  printf format f1a secOutF1 f2a secInF2
+
+  where
+    -- oMsg f = unwords ["Output has been", "written", "to", f]  -- testing unwords
+    noTbError = exitWithErrorMsg $ unwords
+      [ "No #tb (timebase) found in the header of frameindex, probably"
+      , "the frameindex wasn't generated properly."
+      ]
+    noHashMatchErr = exitWithErrorMsg $ unwords
         [ "No matching list containing hash."
         , "The second video may need fixup, is encoded differently or"
         , "is not the continuation of the first."
         ]
+    format = L.intercalate ""
+             [ "file '%s'\n"
+             , "outpoint %.5f\n"
+             , "file '%s'\n"
+             , "inpoint %.5f\n"
+             ]
 
-  putStrLn $ replicate 40 '-'
-  putStrLn "Header1"
-  print headerLine
+csvLines :: [ByteString] -> [[ByteString]]
+csvLines = map (map C.strip . C.split ',')
 
-  putStrLn $ replicate 40 '-'
-  putStrLn "Header2"
-  print headerLine2
+ptsToSec :: Maybe [ByteString] -> [ByteString] -> Float
+ptsToSec hashLine tb =   case hashLine of
+    Just cl -> calc
+      -- print cl
+      where
+        r = readIntBS
+        pts        = r $ cl !! 2
+        sec        = r $ head tb
+        frac       = r $ last tb
+        calc       = pts * sec / frac
+        -- calcString = showFFloat (Just 4) calc []
+    Nothing -> 0.0
 
+readIntBS :: ByteString -> Float
+readIntBS bs =
+  case C.readInt bs of
+    Just (n, _) -> fromIntegral n
+    Nothing -> 1.0
 
-  putStrLn $ replicate 40 '='
-  putStrLn "tb index1"
-  case tbIndex of
-    Just i -> C.putStrLn $ linesListAll !! i
-    Nothing -> do
-      exitWithErrorMsg $ unwords
-        [ "No #tb (timebase) found in the header of frameindex, probably"
-        , "the frameindex wasn't generated properly."
-        ]
+parseFrameIndexKnob :: Control.Monad.IO.Class.MonadIO m
+                    => Knob
+                    -> m ( [ByteString]
+                         , Maybe Int
+                         , [ByteString]
+                         )
+parseFrameIndexKnob knob = do
+  kc <- Knob.getContents knob
+  let linesListAll = C.lines kc
+      tbIndex      = PL.findIndexStartWith (C.pack "#tb") linesListAll
+      headerIndex  = findHeaderIndex linesListAll
+      -- headerLine   = linesListAll !! headerIndex
+      linesList    = drop (headerIndex + 1) linesListAll
+  pure (linesListAll, tbIndex, linesList)
 
-  putStrLn $ replicate 40 '='
-  putStrLn "tb index2"
-  case tbIndex2 of
-    Just i -> C.putStrLn $ linesListAll !! i
-    Nothing -> do
-      exitWithErrorMsg $ unwords
-        [ "No #tb (timebase) found in the header of frameindex, probably"
-        , "the frameindex wasn't generated properly."
-        ]
+newKnobFileOrOutput :: Bool -> FilePath -> Maybe (IO Knob) -> IO Knob
+newKnobFileOrOutput bool f maybeKnobFunc = do
+  case (bool, maybeKnobFunc) of
+    (True, _)          -> Knob.newKnob =<< C.readFile f
+    (False, Just func) -> func
+    (_, Nothing)       -> exitWithErrorMsg
+                          "Missing output file or knob function."
 
-  where
-    o1 = makeFrameIndexExtension f1
-    o2 = makeFrameIndexExtension f2
-    oMsg f = unwords ["Output has been", "written", "to", f]  -- testing unwords
+writeKnobToFile :: Bool -> FilePath -> Knob -> IO ()
+writeKnobToFile False f knob = do
+  knobCont <- Knob.getContents knob
+  BS.writeFile f knobCont
+  putStrLn oMsg
+    where
+      oMsg = unwords ["Output has been", "written", "to", f]
+writeKnobToFile _ _ _ = mempty
 
 exitWithErrorMsg :: String -> IO b
 exitWithErrorMsg msg = do
@@ -132,10 +183,14 @@ findHeaderIndex = go 0
 fpsProbePrint :: Opts -> IO ()
 fpsProbePrint (Opts f1 f2 _) = do
   pf1 <- fpsProbe f1
-  putStrLn $ unwords [f1, "has fps", pf1]
+  putStr $ f1 ++ " file has fps: "
+  C.putStrLn $ splitHead pf1
 
   pf2 <- fpsProbe f2
-  putStrLn $ unwords [f2, "has fps", pf2]
+  putStr $ f2 ++ " file has fps: "
+  C.putStrLn $ splitHead pf2
+    where
+      splitHead = head . C.split '/' . C.pack
 
 makeFrameIndexExtension :: FilePath -> FilePath
 makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
