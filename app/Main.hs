@@ -38,10 +38,6 @@ main = do
     , "file,pipe", "-f", "concat", "-safe", "0", "-i", tempFile
     , "-c", "copy", outFile
     ]
-    -- [ "-y", "-stats", "-hide_banner", "-avoid_negative_ts make_zero"
-    -- , "-fflags +genpts", "-protocol_whitelist file,pipe", "-f concat"
-    -- , "-safe 0", "-i", tempFile, "-c copy", outFile
-    -- ]
   hPutStrLn stderr "Removing temp file..."
   removeFile tempFile
 
@@ -128,4 +124,3 @@ fpsProbePrint (Opts f1 f2 _) = do
       ri bs = case C.readInt bs of
                 Just (int, _) -> int
                 Nothing -> 0
-
