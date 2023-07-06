@@ -1,4 +1,7 @@
-module VidMerge.FrameMd5 ( writeFrameIndexToFile ) where
+module VidMerge.FrameMd5 ( frameIndexFromFile
+                         , makeFrameIndexExtension
+                         , newKnobFileOrOutput
+                         , writeKnobToFile ) where
 
 import System.Process
     ( createProcess,
@@ -7,24 +10,26 @@ import System.Process
       StdStream(CreatePipe) )
 import Data.ByteString ( ByteString )
 import qualified Data.ByteString as BS
-import System.IO ( hClose, IOMode(WriteMode) )
-import Data.Knob ( getContents, newFileHandle, newKnob )
+import Data.Knob ( newKnob, Knob )
+import qualified Data.Knob as Knob
+import System.FilePath ( dropExtensions, (<.>) )
+import qualified Data.ByteString.Char8 as C
+import IO.Error ( exitWithErrorMsg )
 
-import System.FilePath ( (<.>), dropExtensions )
+import System.Console.ANSI
+    ( hSetSGR,
+      Color(Green),
+      ColorIntensity(Vivid),
+      ConsoleLayer(Foreground),
+      SGR(Reset, SetColor) )
 
-writeFrameIndexToFile :: FilePath -> IO ()
-writeFrameIndexToFile f = do
-  let o = makeFrameIndexExtension f
+import System.IO ( hPutStrLn, stderr )
+
+
+frameIndexFromFile :: String -> IO Knob
+frameIndexFromFile f = do
   output <- readProcessOutput $ extractFrameMd5 f
-  knob <- newKnob output
-  -- h <- newFileHandle knob "knobFrameMd5Handle.tmp" WriteMode
-  cont <- Data.Knob.getContents knob
-  BS.writeFile o cont
-  -- hClose h
-  putStrLn $ "Output has been written to " ++ o
-
-makeFrameIndexExtension :: FilePath -> FilePath
-makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
+  newKnob output
 
 readProcessOutput :: CreateProcess -> IO ByteString
 readProcessOutput pc = do
@@ -44,3 +49,28 @@ extractFrameMd5 f =
        , "-c", "copy"
        , "-"
        ]
+
+makeFrameIndexExtension :: FilePath -> FilePath
+makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
+
+newKnobFileOrOutput :: Bool -> FilePath -> Maybe (IO Knob) -> IO Knob
+newKnobFileOrOutput bool f maybeKnobFunc = do
+  case (bool, maybeKnobFunc) of
+    (True, _)          -> Knob.newKnob =<< C.readFile f
+    (False, Just func) -> func
+    (_, Nothing)       -> exitWithErrorMsg
+                          "Missing output file or knob function."
+
+writeKnobToFile :: Bool -> FilePath -> Knob -> IO ()
+writeKnobToFile False f knob = do
+  knobCont <- Knob.getContents knob
+  BS.writeFile f knobCont
+  green
+  hPutStrLn stderr oMsg
+  reset
+    where
+      oMsg = unwords [ "Output frameindex file has been"
+                     , "written to", f]
+      green = hSetSGR stderr [SetColor Foreground Vivid Green]
+      reset = hSetSGR stderr [Reset]
+writeKnobToFile _ _ _ = mempty

@@ -1,5 +1,51 @@
 * Revision history for vidmerge
 
+** 0.6.0.0
+# [2023-07-06 Thu 03:22:50 -03]
+- Add writing `concatfile' to temporary file
+- Add merge =ffmpeg ... -f concat= command action
+
+** 0.5.1.0
+# [2023-07-06 Thu 01:33:18 -03]
+- Moved functions to library;
+  Same functionality as =0.5=.
+
+** 0.5.0.0
+# [2023-07-05 Wed 20:05:43 -03]
+- Add =directory= dependency.
+- Better logic with helper functions on main
+- Parse timebase (tb) values and convert pts to seconds
+- Experimental print of concat file
+
+** 0.4.1.0
+# [2023-07-03 Mon 14:19:10 -03]
+- Add =#tb= timebase "line finding"
+- Create =Parse.ByteString.List= library module for some bytestring
+  alternatives of =Parse.List=.
+- Move stderr error messages to helper function
+
+** 0.4.0.0
+# [2023-07-03 Mon 02:00:15 -03]
+
+- Add exectable dependencies =split=, =containers= and =ansi-terminal=.
+- Changed main binary to, after writing frameindex, parse it's comma
+  separated values into a list of lists for each file and;
+- Compare the last hash item from the last list of lists and find a
+  list with a matching hash on the second list of lists and print that
+  list.
+  Experimental state.
+- Add exit code and colored stderr text.
+- Create =Parse.List= module file in library
+- Remove comments from FrameMd5.hs
+- Added type definitions
+
+** 0.3.0.0
+# [2023-07-02 Sun 15:14:56 -03]
+- Moved and renamed functions and some logic from library to binary to
+  focus on IO purity and side-effects.
+- Added cabal ghc option compila flags for more strict warnings
+- Addressed compile warnings
+
 ** 0.2.1.0
 # [2023-07-02 Sun 00:00:59 -03]
 - Added fps probe and print to the screen

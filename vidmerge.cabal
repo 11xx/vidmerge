@@ -14,7 +14,7 @@ name:               vidmerge
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.2.1.0
+version:             0.6.0.0
 
 -- A short (one-line) description of the package.
 synopsis:           Merge video pieces based on matching frame MD5 checksums
@@ -51,6 +51,10 @@ library
     -- Modules exported by the library.
     exposed-modules:  VidMerge.FrameMd5
                       VidMerge.FpsProbe
+                      VidMerge.ParseMd5
+                      Parse.List
+                      Parse.ByteString.List
+                      IO.Error
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -64,12 +68,31 @@ library
                     , process == 1.6.*
                     , knob == 0.2.*
                     , filepath == 1.4.*
+                    -- d
+                    , split == 0.2.*
+                    , containers == 0.6.*
+                    , ansi-terminal == 1.0
+                    , directory == 1.3.*
 
     -- Directories containing source files.
     hs-source-dirs:   src
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+    ghc-options:      -Wall
+                      -Wcompat
+                      -Widentities
+                      -Wincomplete-uni-patterns
+                      -Wincomplete-record-updates
+                      -Wredundant-constraints
+                      -Wmissing-export-lists
+                      -Wpartial-fields
+                      -Wmissing-deriving-strategies
+                      -Wunused-packages
+                      -fwrite-ide-info
+                      -hiedir=.hie
+                      -fprof-auto
 
 executable vidmerge
     -- .hs or .lhs file containing the Main module.
@@ -88,12 +111,30 @@ executable vidmerge
         base ^>=4.16.4.0
       , vidmerge
       , optparse-applicative == 0.18.*
+      , bytestring == 0.11.*
+      , directory == 1.3.*
+      , temporary == 1.3.*
+      , filepath == 1.4.*
+      , process == 1.6.*
 
     -- Directories containing source files.
     hs-source-dirs:   app
 
     -- Base language which the package is written in.
     default-language: Haskell2010
+
+    ghc-options:      -Wall
+                      -Wcompat
+                      -Widentities
+                      -Wincomplete-uni-patterns
+                      -Wincomplete-record-updates
+                      -Wredundant-constraints
+                      -Wmissing-export-lists
+                      -Wpartial-fields
+                      -Wmissing-deriving-strategies
+                      -Wunused-packages
+                      -fwrite-ide-info
+                      -hiedir=.hie
 
 -- test-suite vidmerge-test
 --     -- Base language which the package is written in.
