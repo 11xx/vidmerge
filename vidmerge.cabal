@@ -14,7 +14,7 @@ name:               vidmerge
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.5.0.0
+version:             0.5.1.0
 
 -- A short (one-line) description of the package.
 synopsis:           Merge video pieces based on matching frame MD5 checksums
@@ -54,6 +54,7 @@ library
                       VidMerge.ParseMd5
                       Parse.List
                       Parse.ByteString.List
+                      IO.Error
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -66,6 +67,12 @@ library
                     , bytestring == 0.11.*
                     , process == 1.6.*
                     , knob == 0.2.*
+                    , filepath == 1.4.*
+                    -- d
+                    , split == 0.2.*
+                    , containers == 0.6.*
+                    , ansi-terminal == 1.0
+                    , directory == 1.3.*
 
     -- Directories containing source files.
     hs-source-dirs:   src
@@ -105,11 +112,6 @@ executable vidmerge
       , vidmerge
       , optparse-applicative == 0.18.*
       , bytestring == 0.11.*
-      , filepath == 1.4.*
-      , knob == 0.2.*
-      , split == 0.2.*
-      , containers == 0.6.*
-      , ansi-terminal == 1.0
       , directory == 1.3.*
 
     -- Directories containing source files.

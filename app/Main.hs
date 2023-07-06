@@ -1,39 +1,32 @@
 module Main (main) where
 
-import VidMerge.FrameMd5 ( frameIndexFromFile )
-import VidMerge.FpsProbe ( fpsProbe )
-
+import VidMerge.FrameMd5
+import VidMerge.ParseMd5
 import Options ( optsParserInfo, execParser, Opts(Opts) )
-
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import System.FilePath ( (<.>), dropExtensions )
-import Data.Knob (Knob)
-import qualified Data.Knob as Knob
-
-import qualified Data.ByteString.Char8 as C
-import System.IO ( hPutStr, hPutStrLn, stderr )
-
 import Parse.List (childList)
 import qualified Parse.ByteString.List as PL
-
-import System.Exit ( exitFailure )
-
-import System.Console.ANSI
-    ( hSetSGR,
-      Color(Red, Green),
-      ColorIntensity(Vivid),
-      ConsoleLayer(Foreground),
-      SGR(Reset, SetColor) )
-
 import System.Directory ( doesFileExist, makeAbsolute )
-
-import Control.Monad.IO.Class ( MonadIO )
 import Text.Printf ( printf )
--- import Numeric ( showFFloat )
-
 import Control.Monad ( when )
 import qualified Data.List as L
+import IO.Error
+
+-- import VidMerge.FpsProbe ( fpsProbe )
+-- import Data.ByteString (ByteString)
+-- import qualified Data.ByteString as BS
+-- import Data.Knob (Knob)
+-- import qualified Data.Knob as Knob
+-- import qualified Data.ByteString.Char8 as C
+-- import System.IO ( hPutStr, hPutStrLn, stderr )
+-- import System.Exit ( exitFailure )
+-- import System.Console.ANSI
+--     ( hSetSGR,
+--       Color(Red, Green),
+--       ColorIntensity(Vivid),
+--       ConsoleLayer(Foreground),
+--       SGR(Reset, SetColor) )
+-- import Control.Monad.IO.Class ( MonadIO )
+-- import Numeric ( showFFloat )
 
 main :: IO ()
 main = do
@@ -106,98 +99,16 @@ frameIndexFromArgs (Opts f1 f2 _) = do
              , "inpoint %.5f\n"
              ]
 
-csvLines :: [ByteString] -> [[ByteString]]
-csvLines = map (map C.strip . C.split ',')
+-- fpsProbePrint :: Opts -> IO ()
+-- fpsProbePrint (Opts f1 f2 _) = do
+--   pf1 <- fpsProbe f1
+--   putStr $ f1 ++ " file has fps: "
+--   C.putStrLn $ splitHead pf1
 
-ptsToSec :: Maybe [ByteString] -> [ByteString] -> Float
-ptsToSec hashLine tb =   case hashLine of
-    Just cl -> calc
-      -- print cl
-      where
-        r = readIntBS
-        pts        = r $ cl !! 2
-        sec        = r $ head tb
-        frac       = r $ last tb
-        calc       = pts * sec / frac
-        -- calcString = showFFloat (Just 4) calc []
-    Nothing -> 0.0
-
-readIntBS :: ByteString -> Float
-readIntBS bs =
-  case C.readInt bs of
-    Just (n, _) -> fromIntegral n
-    Nothing -> 1.0
-
-parseFrameIndexKnob :: Control.Monad.IO.Class.MonadIO m
-                    => Knob
-                    -> m ( [ByteString]
-                         , Maybe Int
-                         , [ByteString]
-                         )
-parseFrameIndexKnob knob = do
-  kc <- Knob.getContents knob
-  let linesListAll = C.lines kc
-      tbIndex      = PL.findIndexStartWith (C.pack "#tb") linesListAll
-      headerIndex  = findHeaderIndex linesListAll
-      -- headerLine   = linesListAll !! headerIndex
-      linesList    = drop (headerIndex + 1) linesListAll
-  pure (linesListAll, tbIndex, linesList)
-
-newKnobFileOrOutput :: Bool -> FilePath -> Maybe (IO Knob) -> IO Knob
-newKnobFileOrOutput bool f maybeKnobFunc = do
-  case (bool, maybeKnobFunc) of
-    (True, _)          -> Knob.newKnob =<< C.readFile f
-    (False, Just func) -> func
-    (_, Nothing)       -> exitWithErrorMsg
-                          "Missing output file or knob function."
-
-writeKnobToFile :: Bool -> FilePath -> Knob -> IO ()
-writeKnobToFile False f knob = do
-  knobCont <- Knob.getContents knob
-  BS.writeFile f knobCont
-  green
-  hPutStrLn stderr oMsg
-  reset
-    where
-      oMsg = unwords [ "Output frameindex file has been"
-                     , "written to", f]
-      green = hSetSGR stderr [SetColor Foreground Vivid Green]
-      reset = hSetSGR stderr [Reset]
-writeKnobToFile _ _ _ = mempty
-
-exitWithErrorMsg :: String -> IO b
-exitWithErrorMsg msg = do
-  red
-  hPutStr stderr "ERROR: "
-  reset
-  hPutStrLn stderr msg
-  exitFailure
-    where
-      -- msg' = unwords msg
-      red = hSetSGR stderr [SetColor Foreground Vivid Red]
-      reset = hSetSGR stderr [Reset]
-
-findHeaderIndex :: [C.ByteString] -> Int
-findHeaderIndex = go 0
-  where
-    go index (line:rest)
-      | C.isPrefixOf (C.pack "#stream#, dts,        pts, duration,     size, hash") line = index
-      | otherwise = go (index + 1) rest
-    go _ [] = error "Header not found in CSV frameindex."
-
-fpsProbePrint :: Opts -> IO ()
-fpsProbePrint (Opts f1 f2 _) = do
-  pf1 <- fpsProbe f1
-  putStr $ f1 ++ " file has fps: "
-  C.putStrLn $ splitHead pf1
-
-  pf2 <- fpsProbe f2
-  putStr $ f2 ++ " file has fps: "
-  C.putStrLn $ splitHead pf2
-    where
-      splitHead = head . C.split '/' . C.pack
-
-makeFrameIndexExtension :: FilePath -> FilePath
-makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
+--   pf2 <- fpsProbe f2
+--   putStr $ f2 ++ " file has fps: "
+--   C.putStrLn $ splitHead pf2
+--     where
+--       splitHead = head . C.split '/' . C.pack
 
 -- ffmpeg -y -stats -hide_banner -avoid_negative_ts make_zero -fflags +genpts -protocol_whitelist file,pipe -f concat -safe 0 -i concatfile -c copy file.out.mp4
