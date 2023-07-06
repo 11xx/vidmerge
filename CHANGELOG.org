@@ -1,5 +1,10 @@
 * Revision history for vidmerge
 
+** 0.6.0.0
+# [2023-07-06 Thu 03:22:50 -03]
+- Add writing `concatfile' to temporary file
+- Add merge =ffmpeg ... -f concat= command action
+
 ** 0.5.1.0
 # [2023-07-06 Thu 01:33:18 -03]
 - Moved functions to library;

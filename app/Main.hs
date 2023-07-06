@@ -1,40 +1,52 @@
 module Main (main) where
 
 import VidMerge.FrameMd5
+    ( frameIndexFromFile,
+      makeFrameIndexExtension,
+      newKnobFileOrOutput,
+      writeKnobToFile )
 import VidMerge.ParseMd5
-import Options ( optsParserInfo, execParser, Opts(Opts) )
+    ( csvLines, ptsToSec, parseFrameIndexKnob )
+import VidMerge.FpsProbe ( fpsProbe )
+import Options
+    ( execParser, Opts(Opts, optInputFile1), optsParserInfo )
 import Parse.List (childList)
 import qualified Parse.ByteString.List as PL
-import System.Directory ( doesFileExist, makeAbsolute )
+import System.Directory ( doesFileExist, makeAbsolute, removeFile )
 import Text.Printf ( printf )
 import Control.Monad ( when )
 import qualified Data.List as L
-import IO.Error
-
--- import VidMerge.FpsProbe ( fpsProbe )
--- import Data.ByteString (ByteString)
--- import qualified Data.ByteString as BS
--- import Data.Knob (Knob)
--- import qualified Data.Knob as Knob
--- import qualified Data.ByteString.Char8 as C
--- import System.IO ( hPutStr, hPutStrLn, stderr )
--- import System.Exit ( exitFailure )
--- import System.Console.ANSI
---     ( hSetSGR,
---       Color(Red, Green),
---       ColorIntensity(Vivid),
---       ConsoleLayer(Foreground),
---       SGR(Reset, SetColor) )
--- import Control.Monad.IO.Class ( MonadIO )
--- import Numeric ( showFFloat )
+import IO.Error ( exitWithErrorMsg )
+import qualified Data.ByteString.Char8 as C
+import System.IO.Temp ( writeSystemTempFile )
+import System.FilePath ( dropExtensions, takeExtensions )
+import System.Process ( callProcess )
+import System.IO ( hPutStrLn, stderr )
 
 main :: IO ()
 main = do
   opts <- execParser optsParserInfo
-  frameIndexFromArgs opts
-  -- fpsProbePrint opts
+  concatFile <- frameIndexFromArgs opts
+  (fps1, fps2) <- fpsProbePrint opts
+  tempFile <- writeSystemTempFile "vidmerge-concatfile.txt" concatFile
+  let outFile = dropExtensions (optInputFile1 opts)
+                ++ "-merged"
+                ++ takeExtensions (optInputFile1 opts)
+  callProcess "ffmpeg"
+    [ "-y", "-stats", "-hide_banner", "-avoid_negative_ts"
+    , "make_zero", "-fflags", "+genpts", "-protocol_whitelist"
+    , "file,pipe", "-f", "concat", "-safe", "0", "-i", tempFile
+    , "-c", "copy", outFile
+    ]
+    -- [ "-y", "-stats", "-hide_banner", "-avoid_negative_ts make_zero"
+    -- , "-fflags +genpts", "-protocol_whitelist file,pipe", "-f concat"
+    -- , "-safe 0", "-i", tempFile, "-c copy", outFile
+    -- ]
+  hPutStrLn stderr "Removing temp file..."
+  removeFile tempFile
 
-frameIndexFromArgs :: Opts -> IO ()
+
+frameIndexFromArgs :: Opts -> IO String
 frameIndexFromArgs (Opts f1 f2 _) = do
   let o1 = makeFrameIndexExtension f1
       o2 = makeFrameIndexExtension f2
@@ -60,6 +72,11 @@ frameIndexFromArgs (Opts f1 f2 _) = do
 
   let csv2 = csvLines ll'
       lastMatchFile2 = childList (last csv1 !! 5) csv2  -- 6th item
+      lastFrameFile2
+        | not $ null l = Just l
+        | otherwise = Nothing
+        where
+          l = last csv2
 
   tb <- case tbi of
           Just i -> pure $ llall !! i
@@ -76,13 +93,13 @@ frameIndexFromArgs (Opts f1 f2 _) = do
   f2a <- makeAbsolute f2
   let secOutF1 = ptsToSec lastFrameFile1 tb1
       secInF2 = ptsToSec lastMatchFile2 tb2
+      secOutF2 = ptsToSec lastFrameFile2 tb2
 
   when (secOutF1 == 0.0 || secInF2 == 0.0) noHashMatchErr
 
-  printf format f1a secOutF1 f2a secInF2
+  pure $ printf format f1a secOutF1 f2a secInF2 secOutF2
 
   where
-    -- oMsg f = unwords ["Output has been", "written", "to", f]  -- testing unwords
     noTbError = exitWithErrorMsg $ unwords
       [ "No #tb (timebase) found in the header of frameindex, probably"
       , "the frameindex wasn't generated properly."
@@ -94,21 +111,21 @@ frameIndexFromArgs (Opts f1 f2 _) = do
         ]
     format = L.intercalate ""
              [ "file '%s'\n"
+             , "inpoint 0.0\n"
              , "outpoint %.5f\n"
              , "file '%s'\n"
              , "inpoint %.5f\n"
+             , "outpoint %.5f\n"
              ]
 
--- fpsProbePrint :: Opts -> IO ()
--- fpsProbePrint (Opts f1 f2 _) = do
---   pf1 <- fpsProbe f1
---   putStr $ f1 ++ " file has fps: "
---   C.putStrLn $ splitHead pf1
+fpsProbePrint :: Opts -> IO (Int, Int)
+fpsProbePrint (Opts f1 f2 _) = do
+  pf1 <- fpsProbe f1
+  pf2 <- fpsProbe f2
+  pure (ri $ splitHead pf1, ri $ splitHead pf2)
+    where
+      splitHead = head . C.split '/' . C.pack
+      ri bs = case C.readInt bs of
+                Just (int, _) -> int
+                Nothing -> 0
 
---   pf2 <- fpsProbe f2
---   putStr $ f2 ++ " file has fps: "
---   C.putStrLn $ splitHead pf2
---     where
---       splitHead = head . C.split '/' . C.pack
-
--- ffmpeg -y -stats -hide_banner -avoid_negative_ts make_zero -fflags +genpts -protocol_whitelist file,pipe -f concat -safe 0 -i concatfile -c copy file.out.mp4
