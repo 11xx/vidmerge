@@ -21,7 +21,7 @@ import System.Exit ( exitFailure )
 
 import System.Console.ANSI
     ( hSetSGR,
-      Color(Red),
+      Color(Red, Green),
       ColorIntensity(Vivid),
       ConsoleLayer(Foreground),
       SGR(Reset, SetColor) )
@@ -155,9 +155,14 @@ writeKnobToFile :: Bool -> FilePath -> Knob -> IO ()
 writeKnobToFile False f knob = do
   knobCont <- Knob.getContents knob
   BS.writeFile f knobCont
-  putStrLn oMsg
+  green
+  hPutStrLn stderr oMsg
+  reset
     where
-      oMsg = unwords ["Output has been", "written", "to", f]
+      oMsg = unwords [ "Output frameindex file has been"
+                     , "written to", f]
+      green = hSetSGR stderr [SetColor Foreground Vivid Green]
+      reset = hSetSGR stderr [Reset]
 writeKnobToFile _ _ _ = mempty
 
 exitWithErrorMsg :: String -> IO b
@@ -195,3 +200,4 @@ fpsProbePrint (Opts f1 f2 _) = do
 makeFrameIndexExtension :: FilePath -> FilePath
 makeFrameIndexExtension f = dropExtensions f <.> "frameindex.txt"
 
+-- ffmpeg -y -stats -hide_banner -avoid_negative_ts make_zero -fflags +genpts -protocol_whitelist file,pipe -f concat -safe 0 -i concatfile -c copy file.out.mp4

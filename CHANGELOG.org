@@ -1,6 +1,7 @@
 * Revision history for vidmerge
 
 ** 0.5.0.0
+# [2023-07-05 Wed 20:05:43 -03]
 - Add =directory= dependency.
 - Better logic with helper functions on main
 - Parse timebase (tb) values and convert pts to seconds
