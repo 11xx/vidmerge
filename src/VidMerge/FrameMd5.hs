@@ -14,7 +14,6 @@ import Data.Knob ( newKnob, Knob )
 import qualified Data.Knob as Knob
 import System.FilePath ( dropExtensions, (<.>) )
 import qualified Data.ByteString.Char8 as C
-import IO.Error ( exitWithErrorMsg )
 
 import System.Console.ANSI
     ( hSetSGR,
@@ -24,7 +23,6 @@ import System.Console.ANSI
       SGR(Reset, SetColor) )
 
 import System.IO ( hPutStrLn, stderr )
-
 
 frameIndexFromFile :: String -> IO Knob
 frameIndexFromFile f = do
@@ -58,8 +56,7 @@ newKnobFileOrOutput bool f maybeKnobFunc = do
   case (bool, maybeKnobFunc) of
     (True, _)          -> Knob.newKnob =<< C.readFile f
     (False, Just func) -> func
-    (_, Nothing)       -> exitWithErrorMsg
-                          "Missing output file or knob function."
+    (_, Nothing)       -> Knob.newKnob (C.pack [])
 
 writeKnobToFile :: Bool -> FilePath -> Knob -> IO ()
 writeKnobToFile False f knob = do

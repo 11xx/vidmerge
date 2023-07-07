@@ -1,5 +1,6 @@
 module Parse.ByteString.List ( findIndexStartWith
-                             , lastTwoSplit ) where
+                             , lastTwoSplit
+                             , childList ) where
 
 import qualified Data.List as L
 import Data.ByteString (ByteString)
@@ -12,11 +13,6 @@ findIndexStartWith subchildPrefix = L.findIndex (BS.isPrefixOf subchildPrefix)
 splitWords :: Char -> ByteString -> [[ByteString]]
 splitWords c = map C.words . C.split c
 
--- lastTwoSlashSplit s = [last $ head w, last $ last w]
---   where
---     w = splitWords '/' s
-
-
 lastTwoSplit :: Char -> ByteString -> [ByteString]
 lastTwoSplit c s
   | null w = []
@@ -24,3 +20,6 @@ lastTwoSplit c s
   where
     w = splitWords c s
     len = length w
+
+childList :: ByteString -> [[ByteString]] -> Maybe [ByteString]
+childList searchString = L.find (elem searchString)
