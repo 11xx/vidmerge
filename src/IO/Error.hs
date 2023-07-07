@@ -10,7 +10,7 @@ import System.Console.ANSI
       SGR(Reset, SetColor) )
 
 
-exitWithErrorMsg :: String -> IO b
+exitWithErrorMsg :: String -> IO ()
 exitWithErrorMsg msg = do
   red
   hPutStr stderr "ERROR: "

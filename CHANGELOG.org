@@ -1,5 +1,18 @@
 * Revision history for vidmerge
 
+** 0.7.0.0
+# [2023-07-07 Fri 03:14:10 -03]
+- Better logic and more abstraction of functions on main.
+- Added timing match of (theTimeOfLastFrame - 1Frame) for the inpoint
+  of video 2.
+- Regex match for header line, the lines used to drop all others
+  before it.
+- Moved more functions to library.
+- Minor code corrections and function renames.
+- Add =regex-tdfa= library dependency.
+- Add =safe= executable dependency.
+- Add check for existing merged file and y/n key confirmation prompt.
+
 ** 0.6.0.0
 # [2023-07-06 Thu 03:22:50 -03]
 - Add writing `concatfile' to temporary file
