@@ -33,6 +33,7 @@ import Data.Maybe ( fromMaybe )
 import Numeric ( showFFloat )
 import qualified Safe
 import System.Exit ( exitFailure )
+import Version ( progName )
 
 main :: IO ()
 main = do
@@ -46,14 +47,15 @@ main = do
         where
           fmt f i o f2 i2 o2 = L.intercalate ""
             [ "file '", f, "'\n"
-            , "inpoint ", showFFloat (Just 5) i "", "\n"
-            , "outpoint ", showFFloat (Just 5) o "", "\n"
+            , "inpoint ", sf i "", "\n"
+            , "outpoint ", sf o "", "\n"
             , "file '", f2, "'\n"
-            , "inpoint ", showFFloat (Just 5) i2 "", "\n"
-            , "outpoint ", showFFloat (Just 5) o2 "", "\n"
+            , "inpoint ", sf i2 "", "\n"
+            , "outpoint ", sf o2 "", "\n"
             ]
+          sf = showFFloat (Just 5)
 
-  tempFile <- writeSystemTempFile "vidmerge-concatfile.txt" concatFile
+  tempFile <- writeSystemTempFile (progName ++ "-concatfile.txt") concatFile
   let outFile = dropExtensions (optInputFile1 opts)
                 ++ "-merged"
                 ++ takeExtensions (optInputFile1 opts)

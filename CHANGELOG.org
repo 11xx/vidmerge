@@ -1,5 +1,10 @@
 * Revision history for vidmerge
 
+** 0.7.0.1
+- Change help text description
+- Abstract show float to where in main
+- Use progName to make tempfile
+
 ** 0.7.0.0
 # [2023-07-07 Fri 03:14:10 -03]
 - Better logic and more abstraction of functions on main.

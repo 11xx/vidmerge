@@ -80,7 +80,7 @@ versionOptParse =
 optsParserInfo :: ParserInfo Opts
 optsParserInfo = info (optsParser <**> helper')
   $ fullDesc
-  <> progDesc "Merge videos using matching md5 checksums from frames."
+  <> progDesc "Automatically merge videos using matching md5 checksums from frames."
   <> header (progName ++ " - " ++ "Merge videos using framemd5")
 
 helper' :: Parser (a -> a)
