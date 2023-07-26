@@ -14,10 +14,10 @@ name:               vidmerge
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.7.0.1
+version:             0.8.0.0
 
 -- A short (one-line) description of the package.
-synopsis:           Merge video pieces based on matching frame MD5 checksums
+synopsis:           Automatically merge video pieces based on matching frame MD5 checksums
 
 -- A longer description of the package.
 -- description:
@@ -55,6 +55,10 @@ library
                       Parse.List
                       Parse.ByteString.List
                       IO.Error
+                      IO.Debug
+                      IO.Prompt
+                      IO.Colors
+                      IO.Info
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -74,6 +78,7 @@ library
                     , ansi-terminal == 1.0
                     , directory == 1.3.*
                     , regex-tdfa ^>= 1.3.2.1
+                    , safe ^>= 0.3.19
 
     -- Directories containing source files.
     hs-source-dirs:   src

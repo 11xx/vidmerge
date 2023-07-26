@@ -1,5 +1,35 @@
 * Revision history for vidmerge
 
+** 0.8.0.0
+- Add =-v=, =--verbose= flag
+  + Add some verbose debugging messages to get the state of some
+    variables.
+- Add =-s=, =--match-shortest= flag
+  + Find shortest match by looping the csv'd lines of file1 with the
+    md5 fields of csv'd lines of file2, with a loop cap at the array
+    length/lines of csv'd lines of file1. So if file1 is bigger than
+    file2 and it finds no md5 matches it will take longer and fail.
+    #FIXME
+  + Assign values to the concat file variable based on the =-s= flag.
+- Add ffmpeg flag
+  + =-loglevel warning=: Makes it less verbose but still warns about
+    audio and video desync caused by different timebases from two
+    different and unmatching files. Note that correct videos but that
+    need fixup may also trigger this warning.
+- Abstract some more functions in main into library
+- Use =[INFO]=, =[DEBUG]=, =[ERROR]= and =[PROMPT]= as prefix for printing to
+  the terminal, currently they always have color.
+- Create library modules
+  + IO.Colors: set =System.Console.ANSI= helpers, currently only using
+    =hSetSGR stderr [...]=.
+  + IO.Debug: Helpers to use with verbose flag
+  + IO.Info: Helpers to print normal messages to the terminal
+  + IO.Prompt: Helper to querying terminal input such as =y/n=
+    confirmation.
+- Create the =*.frameindex.txt= file only dropping one extension of
+  file1 instead of all.
+- Clarify "Automatically" in cabal description.
+
 ** 0.7.0.1
 - Change help text description
 - Abstract show float to where in main

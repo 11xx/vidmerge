@@ -4,7 +4,8 @@ module VidMerge.ParseMd5 ( csvLines
                          , findHeaderIndex
                          , readIntBS
                          , getPts
-                         , readFloatBS ) where
+                         , readFloatBS
+                         , cleanKnob ) where
 
 
 import Data.ByteString (ByteString)
@@ -92,3 +93,4 @@ findHeaderIndex = go 0
       , "hash"
       ]
 
+cleanKnob k = Knob.setContents k (C.pack "")

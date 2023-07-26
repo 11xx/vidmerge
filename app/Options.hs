@@ -9,6 +9,11 @@ module Options
 import Options.Applicative
     ( (<**>),
       Alternative((<|>)),
+      prefs,
+      showHelpOnEmpty,
+      execParser,
+      Parser,
+      ParserInfo,
       action,
       fullDesc,
       header,
@@ -18,24 +23,23 @@ import Options.Applicative
       infoOption,
       long,
       metavar,
-      prefs,
       progDesc,
       short,
-      showHelpOnEmpty,
       strArgument,
       strOption,
-      execParser,
-      Parser,
-      ParserInfo )
+      switch )
+
 
 import Options.Applicative.Extra ( helperWith )
 
 import Version ( versionStr, progName )
 
 data Opts = Opts
-  { optInputFile1  :: FilePath
-  , optInputFile2  :: FilePath
-  , optVersion     :: String -> String
+  { optInputFile1    :: FilePath
+  , optInputFile2    :: FilePath
+  , optMatchShortest :: Bool
+  , optVersion       :: String -> String
+  , optVerbose       :: Bool
   }
 
 optsParser :: Parser Opts
@@ -43,7 +47,9 @@ optsParser
   = Opts
   <$> (inputFile1OptParser <|> fileOptParser)
   <*> (inputFile2OptParser <|> fileOptParser)
+  <*> matchShortestOptParser
   <*> versionOptParse
+  <*> verboseOptParse
 
 fileOptParser :: Parser FilePath
 fileOptParser
@@ -70,12 +76,26 @@ inputFile2OptParser
   -- <> value ""
   <> help "Input video file second part"
 
+matchShortestOptParser :: Parser Bool
+matchShortestOptParser
+  = switch
+  $ long "match-shortest"
+  <> short 's'
+  <> help "Use shortest match of the overlapping portion between the input videos."
+
 versionOptParse :: Parser (a -> a)
 versionOptParse =
   infoOption versionStr
   $ long "version"
   <> short 'V'
   <> help "Display the version number"
+
+verboseOptParse :: Parser Bool
+verboseOptParse
+  = switch
+  $ long "verbose"
+  <> short 'v'
+  <> help "Show debug messages"
 
 optsParserInfo :: ParserInfo Opts
 optsParserInfo = info (optsParser <**> helper')

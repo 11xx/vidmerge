@@ -1,59 +1,78 @@
 module Main (main) where
 
 import VidMerge.FrameMd5
-    ( frameIndexFromFile,
-      makeFrameIndexExtension,
+    ( writeKnobToFile,
       newKnobFileOrOutput,
-      writeKnobToFile )
+      makeFrameIndexExtension,
+      frameIndexFromFile )
 import VidMerge.ParseMd5
-    ( csvLines, ptsToSec, getPts, readIntBS, parseFrameIndexKnob )
+    ( csvLines, ptsToSec, getPts, parseFrameIndexKnob, cleanKnob )
+import VidMerge.FpsProbe ( fpsProbePrint )
 
-import VidMerge.FpsProbe ( fpsProbe )
 import Options
-    ( execParser, Opts(optInputFile1, optInputFile2), optsParserInfo )
-import Parse.List (childList)
+    ( optsParserInfo,
+      execParser,
+      Opts(optVerbose, optInputFile2, optMatchShortest, optInputFile1) )
+
 import System.Directory ( doesFileExist, makeAbsolute, removeFile )
-import Control.Monad ( when )
+import Control.Monad ( when, unless )
 import qualified Data.List as L
-import IO.Error ( exitWithErrorMsg )
-import qualified Data.ByteString.Char8 as C
 import System.IO.Temp ( writeSystemTempFile )
 import System.FilePath ( dropExtensions, takeExtensions )
 import System.Process ( callProcess )
-import System.IO
-    ( hGetEcho,
-      hSetBuffering,
-      hSetEcho,
-      hPutStrLn,
-      stderr,
-      stdin,
-      BufferMode(NoBuffering) )
+import System.IO ( hPutStrLn, stderr, hPrint )
 import Data.ByteString (ByteString)
 import Data.Maybe ( fromMaybe )
 import Numeric ( showFFloat )
-import qualified Safe
-import System.Exit ( exitFailure )
+import Safe ( atMay )
 import Version ( progName )
+import Text.Printf ( printf )
+
+import Parse.List ( childList, findShortestMatch )
+import IO.Error ( exitWithErrorMsg, exitWithErrorMsgNoHashMatch )
+import IO.Debug ( debugMsgLn, debugMsg )
+import IO.Prompt ( promptContinueMergedFileExists )
 
 main :: IO ()
 main = do
   opts <- execParser optsParserInfo
-  (fa, secIn, secOut, csv1) <- frameIndexInOut (optInputFile1 opts) True Nothing
-  (fa2, secIn2, secOut2, _) <- frameIndexInOut (optInputFile2 opts) False (Just csv1)
+
+  (fa, _, secInLatest, secOut, csv1) <- frameIndexInOut (optInputFile1 opts) True Nothing
+  (fa2, secOutShortestFile1, secInLatest2, secOut2, csv2) <- frameIndexInOut (optInputFile2 opts) False (Just csv1)
+
+  when (optVerbose opts) $ do
+    debugMsg "This is csv2 !! 5 childlist csv1: "
+    hPrint stderr $ childList (fromMaybe mempty (head csv2 `Safe.atMay` 5)) csv1
+
+    debugMsg "head csv2: "
+    hPrint stderr $ head csv2
+    debugMsgLn $ "Shortest: " <> printf "%.2f" secOutShortestFile1
+
+    debugMsg "Find shortest match: "
+    hPrint stderr $ findShortestMatch 0 (length csv1) csv2 csv1
+
   (_, fps2) <- fpsProbePrint (optInputFile1 opts) (optInputFile2 opts)
-  -- let pad = optPadding opts
-  let concatFile = fmt fa secIn secOut
-                   fa2 (secIn2 - ((1 / fromIntegral fps2)*2)) secOut2
-        where
-          fmt f i o f2 i2 o2 = L.intercalate ""
-            [ "file '", f, "'\n"
-            , "inpoint ", sf i "", "\n"
-            , "outpoint ", sf o "", "\n"
-            , "file '", f2, "'\n"
-            , "inpoint ", sf i2 "", "\n"
-            , "outpoint ", sf o2 "", "\n"
-            ]
-          sf = showFFloat (Just 5)
+
+  let concatFile = formattedFile
+        fa
+        secInLatest
+        secOutFile1
+        fa2
+        ( secInFile2 - ((1 / fromIntegral fps2)*2) )
+        secOut2
+      formattedFile f i o f2 i2 o2 = L.intercalate ""
+        [ "file '",    f,         "'\n"
+        , "inpoint ",  sf i  "",  "\n"
+        , "outpoint ", sf o  "",  "\n"
+        , "file '",    f2,        "'\n"
+        , "inpoint ",  sf i2 "",  "\n"
+        , "outpoint ", sf o2 "",  "\n"
+        ]
+      sf = showFFloat (Just 5)
+      (secOutFile1, secInFile2)
+        | optMatchShortest opts = (secOutShortestFile1, 0.0)
+        | otherwise             = (secOut, secInLatest2)
+
 
   tempFile <- writeSystemTempFile (progName ++ "-concatfile.txt") concatFile
   let outFile = dropExtensions (optInputFile1 opts)
@@ -61,85 +80,65 @@ main = do
                 ++ takeExtensions (optInputFile1 opts)
   doesOutMergedExist <- doesFileExist outFile
   when doesOutMergedExist $ do
-    promptAndContinue outFile
+    promptContinueMergedFileExists outFile
   -- TODO check file size of merged
 
   callProcess "ffmpeg"
-    [ "-y", "-stats", "-hide_banner", "-avoid_negative_ts"
+    [ "-y", "-loglevel", "warning", "-stats", "-hide_banner", "-avoid_negative_ts"
     , "make_zero", "-fflags", "+genpts", "-protocol_whitelist"
     , "file,pipe", "-f", "concat", "-safe", "0", "-i", tempFile
     , "-c", "copy", outFile
     ]
   hPutStrLn stderr "Removing temp file..."
-  removeFile tempFile
 
+  unless (optVerbose opts) $ removeFile tempFile
 
-promptAndContinue :: FilePath -> IO ()
-promptAndContinue f = do
-  hPutStrLn stderr
-    $ unwords [ "Merged file", "\""++f++"\"", "already exists on disk."
-              , "Do you want to continue? [y/n]"
-              ]
-  hSetBuffering stdin NoBuffering
-  oldEcho <- hGetEcho stdin
-  hSetEcho stdin False
-  input <- getChar
-  hSetEcho stdin oldEcho
-  case input of
-    'n' -> hPutStrLn stderr "Aborting..." >> exitFailure
-    'y' -> hPutStrLn stderr "Continuing and letting ffmpeg overwrite the merged file."
-    _   -> do
-      putStrLn "Invalid input. Please enter 'y' or 'n'."
-      promptAndContinue f
+frameIndexInOut
+  :: FilePath -> Bool -> Maybe [[ByteString]]  -- args
+  -> IO ( FilePath, Float, Float, Float, [[ByteString]] )  -- return
+frameIndexInOut video isFirst csvPrevFile = do
+  let frameIndexOutFile = makeFrameIndexExtension video
 
-frameIndexInOut :: FilePath -> Bool -> Maybe [[ByteString]]
-                -> IO ( FilePath, Float, Float, [[ByteString]] )
-frameIndexInOut file isFirst csvPrevFile = do
-  let frameIndexOutFile = makeFrameIndexExtension file
+  (tbLine, linesList) <- frameIndexTbAndListLines video frameIndexOutFile
 
-  oExist <- doesFileExist frameIndexOutFile
-  kf <- newKnobFileOrOutput oExist frameIndexOutFile (Just $ frameIndexFromFile file)
-  writeKnobToFile oExist frameIndexOutFile kf
-  (_, tbLine, linesList) <- parseFrameIndexKnob kf
+  let currentCsvList = csvLines linesList
 
-  let csvList = csvLines linesList
-      lastFrameLine
+  fileAbsolute <- makeAbsolute video
+
+  let lastFrameLine
         | not $ null l = Just l
         | otherwise = Nothing
         where
-          l = last csvList
-      pts = getPts lastFrameLine
+          l = last currentCsvList
+
+      lastPts = getPts lastFrameLine
+
   case lastFrameLine of
     Just _ -> pure ()
     Nothing -> exitWithErrorMsg "No last csv frameindex line retrieved."
 
-  fileAbsolute <- makeAbsolute file
-
-  let lastMd5PrevLine = fromMaybe (C.pack "")
+  let lastMd5PrevLine = fromMaybe mempty
                         $ last
-                        ( fromMaybe [[C.pack ""]] csvPrevFile ) `Safe.atMay` 5
-  let secOut = ptsToSec pts tbLine
+                        ( fromMaybe [[mempty]] csvPrevFile ) `Safe.atMay` 5
+  let secOut = ptsToSec lastPts tbLine
   let secInMay
-        | not isFirst = Just $ (`ptsToSec` tbLine) . getPts . childList lastMd5PrevLine $ csvList
-        | otherwise = Nothing
-      secIn = fromMaybe 0.0 secInMay
-  when (secOut == 0.0) noHashMatchErr
+        | not isFirst = Just $ (`ptsToSec` tbLine) . getPts . childList lastMd5PrevLine $ currentCsvList
+        | otherwise   = Nothing
+      secInLatest = fromMaybe 0.0 secInMay
+      secInShortestPrevFile = (`ptsToSec` tbLine) . getPts $ findShortestMatch 0 (length csvPrevFromMaybe) currentCsvList csvPrevFromMaybe
+        where
+          csvPrevFromMaybe = fromMaybe mempty csvPrevFile
 
-  pure (fileAbsolute, secIn, secOut, csvList)
+  when (secOut == 0.0) exitWithErrorMsgNoHashMatch
 
-  where
-    noHashMatchErr = exitWithErrorMsg $ unwords
-        [ "No matching list containing hash."
-        , "The second video may need fixup, is encoded differently or"
-        , "is not the continuation of the first."
-        ]
-
-fpsProbePrint :: String -> String -> IO (Int, Int)
-fpsProbePrint f1 f2 = do
-  pf1 <- fpsProbe f1
-  pf2 <- fpsProbe f2
-  pure (readIntBS $ splitHead pf1, readIntBS $ splitHead pf2)
-    where
-      splitHead = head . C.split '/' . C.pack
+  pure (fileAbsolute, secInShortestPrevFile, secInLatest, secOut, currentCsvList)
 
 
+frameIndexTbAndListLines :: FilePath -> FilePath -> IO ([Int], [ByteString])
+frameIndexTbAndListLines vid outFile = do
+  oExist <- doesFileExist outFile
+  kf <- newKnobFileOrOutput oExist outFile (Just $ frameIndexFromFile vid)
+  writeKnobToFile oExist outFile kf
+  (_, tbLine, linesList) <- parseFrameIndexKnob kf
+  cleanKnob kf  -- testing, is replacing a Knob with [] the same as cleaning?
+  pure (tbLine, linesList)
